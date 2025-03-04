@@ -225,7 +225,7 @@ class Estimator():
             
         Ex, Lx = v
         exact = None    
-        if isinstance(Lx[-1],str) and 'INF' == Lx[-1].upper():
+        if Lx[-1] == np.inf or (isinstance(Lx[-1],str) and 'INF' == Lx[-1].upper()):
             exact = Ex[-1]
             Ex = Ex[:-1]
             Lx = Lx[:-1]
@@ -342,7 +342,6 @@ if __name__ == "__main__":
     parser.add_argument("--N_walk", type=int, default=1000000, help="Number of walks (default: 1000000).")
     parser.add_argument("--thrs", type=float, default=1e-8, help="Threshold value for random walk (default: 1e-8).")
     parser.add_argument("--N", type=int, default=300, help="Number of extrapolation steps in random walk (default: 300).")
-    parser.add_argument("--riemann", action="store_true", help="Enable Riemann extrapolation (default: False)")
     
     opts = parser.parse_args()
     
