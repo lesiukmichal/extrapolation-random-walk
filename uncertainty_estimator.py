@@ -62,7 +62,7 @@ class Estimator():
         
     """
     
-    def __init__(self, CPU = 0, N_walk = 1000000, N = 300, thrs = 1e-8, N_avg = 5, verbose = 0):
+    def __init__(self, CPU = 0, N_walk = 1000000, N = 300, thrs = 1e-8, N_avg = 1, verbose = 0):
         """
             Initialization method
 
@@ -83,7 +83,7 @@ class Estimator():
         self.N_walk  = N_walk
         self.N       = N
         self.thrs    = thrs
-        self.N_avg   = 5
+        self.N_avg   = N_avg
         self.verbose = verbose
                 
     def estimate(self,v,k="", **kwargs):
@@ -342,7 +342,8 @@ if __name__ == "__main__":
     parser.add_argument("--N_walk", type=int, default=1000000, help="Number of walks (default: 1000000).")
     parser.add_argument("--thrs", type=float, default=1e-8, help="Threshold value for random walk (default: 1e-8).")
     parser.add_argument("--N", type=int, default=300, help="Number of extrapolation steps in random walk (default: 300).")
-    
+    parser.add_argument("--N_avg", type=int, default=1, help="Number of previous iterations used in moving average to check the error of random walk (default: 1).")
+
     opts = parser.parse_args()
     
     Lx = []
@@ -356,6 +357,6 @@ if __name__ == "__main__":
                 Lx.append(int(line[0]))
             Ex.append(float(line[1]))
     v = [Ex, Lx]          
-    estim = Estimator(CPU = opts.CPU, N_walk = opts.N_walk, N = opts.N, thrs = opts.thrs, verbose=2)
+    estim = Estimator(CPU = opts.CPU, N_walk = opts.N_walk, N = opts.N, N_avg = opts.N_avg, thrs = opts.thrs, verbose=2)
     estim.estimate(v,opts.i)
 
