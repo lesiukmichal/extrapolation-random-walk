@@ -5,22 +5,6 @@ from scipy.special import zeta
 from functools import partial
 from multiprocessing import Pool, cpu_count
 
-class deque():
-    """
-        Custom implementation of simple deque class
-    """
-    def __init__(self,n_samples =5) :
-        self.len = n_samples
-        self.data = []
-        
-    def append(self,d):
-        if len(self.data) < self.len:
-            self.data.append(d)
-        else:
-            self.data = self.data[1:] + [d]            
-            
-    def avg(self):
-        return np.mean(self.data) 
 
 def random_walk(d,i_sample):
     """
@@ -33,21 +17,15 @@ def random_walk(d,i_sample):
                                         ext   : The list of starting extrapolated values
                                         thrs  : Threshold for stopping the procedure
                                         n     : The number of maximal iterations
-                                        n_avg : The number of last results being averaged in an estimation of error
         i_sample : (int) Currently dummy variable. 
     """
-    ext, thrs, n, n_avg = d #unpack the data
+    ext, thrs, n = d #unpack the data
     err = 1
     data = ext[:] #make local copy of extrapolation data
-    
-    #init deque
-    past_data = deque(n_avg)
-    [past_data.append(d) for d in ext]
-    while abs(err) > thrs and len(data) < n:
+    pm = 1 # bracket 
+    while abs(pm) > thrs and len(data) < n:
         pm = abs(data[-1] - data[-2])
         new_val = np.random.uniform(data[-1] - pm, data[-1] + pm)
-        err = new_val - past_data.avg()
-        past_data.append(new_val)
         data.append(new_val)
     if len(data) == n:
         print("")
@@ -62,7 +40,7 @@ class Estimator():
         
     """
     
-    def __init__(self, CPU = 0, N_walk = 1000000, N = 300, thrs = 1e-8, N_avg = 1, verbose = 0):
+    def __init__(self, CPU = 0, N_walk = 1000000, N = 300, thrs = 1e-8, verbose = 0):
         """
             Initialization method
 
@@ -72,7 +50,6 @@ class Estimator():
             N_walk  : (int) Number of random walks to estimated the extrapolation and its uncertainty. Default is 1 000 000.
             N       : (int) Number of iteration for each random walk. Default is 300.
             thrs    : (float) Threshold for stopping the iteration for each random walk. Default is 1e-8.
-            N_avg   : (int) Number of results used in moving average when estimating the difference between two iteration. Difference has be smaller than 'thrs'. Default is 5.
             verbose : (int) How much to print during procedure. 0 := do not print anything, 1 := print final table, 2:= print used options, datapoints, extrapolated results, final table. 
                             Default is 0.
         """
@@ -83,7 +60,6 @@ class Estimator():
         self.N_walk  = N_walk
         self.N       = N
         self.thrs    = thrs
-        self.N_avg   = N_avg
         self.verbose = verbose
                 
     def estimate(self,v,k="", **kwargs):
@@ -216,7 +192,6 @@ class Estimator():
             print(f"N_walk            = {self.N_walk}")
             print(f"thrs              = {self.thrs}")
             print(f"N of extr. steps  = {self.N}")
-            print(f"N of avg. samples = {self.N_avg}")
             print("")
         
 
@@ -284,7 +259,7 @@ class Estimator():
                 print(f"Random walk from {Lx[i]:2d},{Lx[i+1]:2d}Z and {Lx[i+1]:2d},{Lx[i+2]:2d}Z ",end=" | ")
             # set up the parallelization
             pool = Pool(self.CPU)
-            pal_random = partial(random_walk, (ex[:i+2],self.thrs,self.N,self.N_avg)) # prepare the datapack
+            pal_random = partial(random_walk, (ex[:i+2],self.thrs,self.N)) # prepare the datapack
             guesses = np.asarray(pool.map(pal_random,np.arange(self.N_walk)))
                         
             # estimated mean and std of the results
@@ -332,7 +307,6 @@ if __name__ == "__main__":
         N_walk   : (int) Number of random walks to estimated the extrapolation and its uncertainty. Default is 1 000 000.
         N        : (int) Number of iteration for each random walk. Default is 300.
         thrs     : (float) Threshold for stopping the iteration for each random walk. Default is 1e-8.
-        N_avg    : (int) Number of results used in moving average when estimating the difference between two iteration. Difference has be smaller than 'thrs'. Default is 5.
     """    
     
     default_cpu = cpu_count()//2
@@ -342,7 +316,6 @@ if __name__ == "__main__":
     parser.add_argument("--N_walk", type=int, default=1000000, help="Number of walks (default: 1000000).")
     parser.add_argument("--thrs", type=float, default=1e-8, help="Threshold value for random walk (default: 1e-8).")
     parser.add_argument("--N", type=int, default=300, help="Number of extrapolation steps in random walk (default: 300).")
-    parser.add_argument("--N_avg", type=int, default=1, help="Number of previous iterations used in moving average to check the error of random walk (default: 1).")
 
     opts = parser.parse_args()
     
@@ -357,6 +330,6 @@ if __name__ == "__main__":
                 Lx.append(int(line[0]))
             Ex.append(float(line[1]))
     v = [Ex, Lx]          
-    estim = Estimator(CPU = opts.CPU, N_walk = opts.N_walk, N = opts.N, N_avg = opts.N_avg, thrs = opts.thrs, verbose=2)
+    estim = Estimator(CPU = opts.CPU, N_walk = opts.N_walk, N = opts.N, thrs = opts.thrs, verbose=2)
     estim.estimate(v,opts.i)
 
