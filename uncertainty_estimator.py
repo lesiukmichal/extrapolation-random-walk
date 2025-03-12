@@ -1,3 +1,4 @@
+import time
 import argparse
 import numpy as np
 import pandas as pd
@@ -5,8 +6,11 @@ from scipy.special import zeta
 from functools import partial
 from multiprocessing import Pool, cpu_count
 
+def init():
+    global rng
+    rng = np.random.default_rng()
 
-def random_walk(d,i_sample):
+def random_walk(d,n_sample):
     """
         Random walk procedure to estimate the extrapolation variable and its uncertainty. The function is set up so it can be used with Pool.map function 
         to run in parallel.
@@ -20,19 +24,29 @@ def random_walk(d,i_sample):
         i_sample : (int) Currently dummy variable. 
     """
     ext, thrs, n = d #unpack the data
-    err = 1
-    data = ext[:] #make local copy of extrapolation data
-    pm = 1 # bracket 
-    while abs(pm) > thrs and len(data) < n:
-        pm = abs(data[-1] - data[-2])
-        new_val = np.random.uniform(data[-1] - pm, data[-1] + pm)
-        data.append(new_val)
-    if len(data) == n:
-        print("")
-        print(abs(err) > thrs,len(data) < n)
-        print(f"Warning: prematurely ending at iteration #.{len(data)} with current err. {err:12.6e}|{thrs:12.6e} and last extr. value {data[-1]:12.7f}. Increase of N is recommended.")
-        raise RuntimeError(name)
-    return data[-1]
+    guesses = []
+    rng = np.random.default_rng() # create a new RNG generator to not share the same across multiple processes
+    samples = rng.uniform(0,1,n_sample//3)
+    _i = 0
+    # print("Process",n_sample,d,samples)
+    for _ in range(n_sample):
+        err = 1
+        data = ext[:] #make local copy of extrapolation data
+        pm = 1 # bracket 
+        while abs(pm) > thrs and len(data) < n:
+            pm = abs(data[-1] - data[-2])
+            new_val = 2. * pm * samples[_i] + data[-1] - pm
+            data.append(new_val)
+            _i += 1
+            if _i >= len(samples):
+                samples = rng.uniform(0,1,n_sample//3)
+                _i = 0
+        if len(data) == n:
+            print("")
+            errMsg = f": prematurely ending at iteration #.{len(data)} with current err. {err:12.6e}|{thrs:12.6e} and last extr. value {data[-1]:12.7f}. Increase of N is recommended."
+            raise RuntimeError(errMsg)
+        guesses.append(data[-1])
+    return guesses
 
 class Estimator():
     """
@@ -161,7 +175,7 @@ class Estimator():
                                                f"{sigma3:.7f}",
                                                f"{abs(self.e_x[i+1]-self.Ex[i+2]):.7f}",
                                                f"{abs(self.e_x[i+1]-self.e_x[i]):.7f}",
-                                               f"{self.exact-mu:.7f}"]
+                                               f"{self.exact-self.e_x[i+1]:.7f}"]
                                             )
                     else:
                         data_to_print.append( [f" {{{self.Lx[i]:2d},{self.Lx[i+1]:2d}}} {{{self.Lx[i+1]:2d},{self.Lx[i+2]:2d}}}",
@@ -189,7 +203,7 @@ class Estimator():
  
         if self.verbose > 1: 
             print(f"CPU               = {self.CPU}")
-            print(f"N_walk            = {self.N_walk}")
+            print(f"N_walk            = {self.N_walk:,}")
             print(f"thrs              = {self.thrs}")
             print(f"N of extr. steps  = {self.N}")
             print("")
@@ -255,13 +269,13 @@ class Estimator():
         # 1st iteration using extrapolations with [2,3], [3,4] 
         # 2nd iteration using extrapolations with [3,4], [4,5]        
         for i in range(0,len(ex)-1):
+            t0 = time.time()
             if self.verbose > 1:
                 print(f"Random walk from {Lx[i]:2d},{Lx[i+1]:2d}Z and {Lx[i+1]:2d},{Lx[i+2]:2d}Z ",end=" | ")
-            # set up the parallelization
-            pool = Pool(self.CPU)
-            pal_random = partial(random_walk, (ex[:i+2],self.thrs,self.N)) # prepare the datapack
-            guesses = np.asarray(pool.map(pal_random,np.arange(self.N_walk)))
-                        
+            pal_random = partial(random_walk, (ex[:i+2], self.thrs, self.N)) # prepare the datapack
+            with Pool(self.CPU) as pool:
+                guesses = np.asarray(pool.map(pal_random,[self.N_walk//self.CPU]*self.CPU)).flatten()              
+
             # estimated mean and std of the results
             mu = np.mean(guesses)
             std = np.std(guesses)
@@ -278,9 +292,9 @@ class Estimator():
             
             # clean up the memory
             guesses = None
-            
+            t1 = time.time() 
             if self.verbose > 1:
-                print(f"Mean: {mu:.7f} 2.5% of data lies below {quantiles[0]:.7f} and 97.5% below {quantiles[1]:.7f} | 68.27% {sigma1:.7f} 95% {sigma2:.7f} 99.73% {sigma3:.7f}")
+                print(f"Mean: {mu:.7f} 2.5% of data lies below {quantiles[0]:.7f} and 97.5% below {quantiles[1]:.7f} | 68.27% {sigma1:.7f} 95.45% {sigma2:.7f} 99.73% {sigma3:.7f} Finished in {t1-t0:.3f}")
             # append this iteration to final results
             results.append(mu,std,[sigma1,sigma2,sigma3])
         if self.verbose:
