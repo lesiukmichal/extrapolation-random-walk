@@ -21,25 +21,27 @@ def random_walk(d,n_sample):
                                         ext   : The list of starting extrapolated values
                                         thrs  : Threshold for stopping the procedure
                                         n     : The number of maximal iterations
-        i_sample : (int) Currently dummy variable. 
+        n_sample : (int) Number of walks per CPU 
     """
     ext, thrs, n = d #unpack the data
     guesses = []
     rng = np.random.default_rng() # create a new RNG generator to not share the same across multiple processes
-    samples = rng.uniform(0,1,n_sample//3)
+
+    # Prepare pool of random numbers between 0 and 1 to not call random generator every time. 
+    # Number prepared samples is dependant of number of walks but reduced by a int((log10(n_sample) -1)  to reduce memory footprint
+    samples = rng.uniform(0,1,n_sample//int(np.log10(n_sample)-1.)) 
     _i = 0
-    # print("Process",n_sample,d,samples)
     for _ in range(n_sample):
         err = 1
         data = ext[:] #make local copy of extrapolation data
-        pm = 1 # bracket 
+        pm = 1 #bracket 
         while abs(pm) > thrs and len(data) < n:
             pm = abs(data[-1] - data[-2])
-            new_val = 2. * pm * samples[_i] + data[-1] - pm
+            new_val = 2. * pm * samples[_i] + data[-1] - pm 
             data.append(new_val)
             _i += 1
             if _i >= len(samples):
-                samples = rng.uniform(0,1,n_sample//3)
+                samples = rng.uniform(0,1,n_sample//int(np.log10(n_sample)-1.))
                 _i = 0
         if len(data) == n:
             print("")
@@ -257,7 +259,7 @@ class Estimator():
         elif extr_method.upper() == "RIEMANN":
             ex = [Ex[i] + (Ex[i] - Ex[i-1])*(Lx[i]**(n_extr+1))*(zeta(n_extr+1) - sum([l**(-(n_extr+1)) for l in range(1,Lx[i]+1)])) for i in range(1,len(Lx))]
             if self.verbose > 1 :
-                print('Using Riemann extrapolation to kickstart',ex)        
+                print('Using Riemann extrapolation (n={n_extr}) to kickstart',ex)        
         else:
             raise NotImplementedError("Not implemented method"+str(extr_method))
             
@@ -307,7 +309,7 @@ if __name__ == "__main__":
     """ 
         Parameters
         ----------
-        datafile : (str) The filepath to the file containing pairs of cardinal numbers and values to be extrapolated. If 'inf' string in the place of cardinal number, 
+        i : (str) The filepath to the file containing pairs of cardinal numbers and values to be extrapolated. If 'inf' string in the place of cardinal number, 
                         the value is taken as an exact value.
                         An example of input file is:
                          2    -0.0400183970
