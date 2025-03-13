@@ -3,7 +3,7 @@
 <h1>Estimating complete basis set extrapolation error through random walk</h1>
 
 This repository contains a PYTHON implementation of a method of estimating the uncertainty of a result obtained through extrapolation to the complete basis set limit.
-The method is based on an ensemble of random walkswhich simulate all possible extrapolation outcomes that could have been obtained if results from larger basis sets had been available.
+The method is based on an ensemble of random walks which simulate all possible extrapolation outcomes that could have been obtained if results from larger basis sets had been available.
 The results assembled from a large collection of random walks can be then analyzed statistically, providing a route for uncertainty prediction at a confidence level required in a particular application.
 The method is free of empirical parameters and compatible with any extrapolation scheme. The proposed technique has been tested in a series of numerical trials by comparing the determined confidence intervals with reliable reference data.
 
@@ -60,7 +60,7 @@ with open("extr_data/He_polar",'r') as fin:
             Lx.append(int(line[0]))
         Ex.append(float(line[1]))
     v = [Ex, Lx]
-    res = estim.estimate(v,k)
+    res = estim.estimate(v,'Extrapolation of He polarizability')
 ````
 It is also possible to use a custom extrapolation method. The callable function has to take two lists (a list of cardinal numbers of a basis and properties to be extrapolated) and has to return a list of extrapolated values
 ````{python3}
@@ -80,7 +80,7 @@ with open("extr_data/He_polar",'r') as fin:
             Lx.append(int(line[0]))
         Ex.append(float(line[1]))
     v = [Ex, Lx]
-    res = estim.estimate(v, k, extr_method = custom_extrapol,**kwargs)
+    res = estim.estimate(v, 'Custom extrapolation method', extr_method = custom_extrapol,**kwargs)
 ````
 
 <b>CITATION:</b> Lang, J.; Przybytek, M.; Lesiuk, M.; Estimating complete basis set extrapolation error through random walk, 2025
