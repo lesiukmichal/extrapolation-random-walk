@@ -83,5 +83,5 @@ with open("extr_data/He_polar",'r') as fin:
     res = estim.estimate(v, 'Custom extrapolation method', extr_method = custom_extrapol,**kwargs)
 ````
 
-<b>CITATION:</b> (Lang, J.; Przybytek, M.; Lesiuk, M.; Estimating complete basis set extrapolation error through random walk, 2025, arXiv:2503.09771)[https://arxiv.org/abs/2503.09771]
+<b>CITATION:</b> [Lang, J.; Przybytek, M.; Lesiuk, M.; Estimating complete basis set extrapolation error through random walk, 2025, arXiv:2503.09771](https://arxiv.org/abs/2503.09771)
          
